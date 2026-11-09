@@ -22,6 +22,16 @@ $("playerId").textContent=playerId;const ADMIN_IDS=new Set(["CTL-727d02ae-1eb2-4
 $("hideId").onclick=()=>{idHidden=!idHidden;$("playerId").textContent=idHidden?"••••••••••••••••":playerId;$("hideId").textContent=idHidden?"Show":"Hide";$("hideId").title=idHidden?"Show Player ID":"Hide Player ID while recording"};
 const defaults={clicks:0,coins:0,auto:0,power:1,bonus:0,turbo:0,theme:0,lastDaily:""};let game={...defaults};try{game={...defaults,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch(e){}
 for(const k of ["clicks","coins","auto","bonus","turbo"])game[k]=Math.max(0,Number(game[k])||0);game.power=Math.max(1,Number(game.power)||1);game.theme=Math.max(0,Number(game.theme)||0);
+// Admin profile: grant huge demo stats and maxed upgrades only to this exact local Player ID.
+const ADMIN_ID="CTL-727d02ae-1eb2-4b3d-8bc0-b";
+if(playerId===ADMIN_ID){
+ game.clicks=1e100;
+ game.coins=1e100;
+ game.power=1e50;
+ game.auto=1e30;
+ game.bonus=1e30;
+ game.turbo=1e30;
+}
 const themes=[["#101b35","#17294b","#168cff"],["#10291f","#174532","#27b878"],["#291526","#47213d","#e45ab2"],["#201c38","#332c60","#a17cff"]];
 const cost={auto:()=>50+game.auto*50,power:()=>100+(game.power-1)*100,bonus:()=>150+game.bonus*150,turbo:()=>250+game.turbo*250};
 function save(show=true){try{localStorage.setItem(KEY,JSON.stringify(game));if(show)$("saveStatus").textContent="✓ Saved just now · next autosave in 10 minutes"}catch(e){$("saveStatus").textContent="Could not save: browser storage unavailable"}}
