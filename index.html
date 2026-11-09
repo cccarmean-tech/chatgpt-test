@@ -8,39 +8,85 @@
     :root { color-scheme: dark; --bg:#10131d; --panel:#1b2130; --text:#f4f6ff; --accent:#8b7cff; }
     * { box-sizing: border-box; }
     body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at top,#25234a,var(--bg) 55%); color:var(--text); font-family:system-ui,sans-serif; transition:background .25s; }
-    main { width:min(100%,560px); padding:32px; border:1px solid #ffffff20; border-radius:24px; background:var(--panel); box-shadow:0 24px 80px #0006; text-align:center; }
+    main { width:min(100%,680px); padding:30px; border:1px solid #ffffff20; border-radius:24px; background:var(--panel); box-shadow:0 24px 80px #0006; text-align:center; }
     .tag { color:var(--accent); font-size:.78rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; }
     h1 { margin:12px 0 8px; font-size:clamp(2rem,7vw,3.2rem); }
     p { color:#b9c0d3; line-height:1.6; }
-    .count { margin:28px 0 8px; font-size:4rem; font-weight:800; font-variant-numeric:tabular-nums; }
-    .message { min-height:52px; margin:12px 0 24px; }
+    .stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:24px 0; }
+    .stat { background:#ffffff0b; border:1px solid #ffffff14; border-radius:16px; padding:14px; }
+    .stat strong { display:block; font-size:clamp(1.7rem,5vw,2.5rem); font-variant-numeric:tabular-nums; }
+    .stat span { color:#aeb7cc; font-size:.88rem; }
+    .message { min-height:48px; margin:12px 0 20px; }
     .buttons { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }
     button { border:0; border-radius:12px; padding:12px 17px; color:white; background:var(--accent); font:inherit; font-weight:700; cursor:pointer; }
     button.secondary { background:#343c50; }
-    button:hover { filter:brightness(1.12); transform:translateY(-1px); }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    button:not(:disabled):hover { filter:brightness(1.12); transform:translateY(-1px); }
     button:focus-visible { outline:3px solid white; outline-offset:3px; }
-    footer { margin-top:26px; color:#7f899f; font-size:.8rem; }
+    .shop { margin-top:26px; padding-top:22px; border-top:1px solid #ffffff20; text-align:left; }
+    .shop h2 { margin:0 0 5px; text-align:center; }
+    .shop-intro { margin:0 0 16px; text-align:center; font-size:.92rem; }
+    .upgrade { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px; margin:10px 0; border:1px solid #ffffff18; border-radius:14px; background:#ffffff08; }
+    .upgrade p { margin:4px 0 0; font-size:.86rem; }
+    .upgrade button { flex-shrink:0; }
+    footer { margin-top:24px; color:#7f899f; font-size:.8rem; }
+    @media(max-width:480px) { main { padding:22px 16px; } .upgrade { align-items:flex-start; flex-direction:column; } }
   </style>
 </head>
 <body>
   <main>
-    <div class="tag">Experiment 001</div>
+    <div class="tag">Experiment 001 · Clicker mode</div>
     <h1>ChatGPT Test Lab</h1>
-    <p>A tiny corner of the internet for testing buttons, counters, and questionable ideas.</p>
-    <div class="count" id="count" aria-live="polite">0</div>
-    <p>Button clicks recorded</p>
-    <div class="message" id="message" aria-live="polite">System ready. Press a button to begin.</div>
+    <p>Click your way to 500, earn coins, and build a ridiculously powerful clicking setup.</p>
+
+    <section class="stats" aria-label="Game stats">
+      <div class="stat"><strong id="count">0</strong><span>Total clicks</span></div>
+      <div class="stat"><strong id="coins">0</strong><span>Coins</span></div>
+      <div class="stat"><strong id="clickPower">1</strong><span>Clicks per tap</span></div>
+      <div class="stat"><strong id="autoRate">0</strong><span>Auto clicks / second</span></div>
+    </section>
+
+    <div class="message" id="message" aria-live="polite">System ready. Every 500 clicks earns you 50 coins.</div>
     <div class="buttons">
-      <button id="clickBtn">Click me</button>
+      <button id="clickBtn">CLICK!</button>
       <button class="secondary" id="randomBtn">Random message</button>
       <button class="secondary" id="themeBtn">Change theme</button>
-      <button class="secondary" id="resetBtn">Reset</button>
     </div>
-    <footer>Built for experiments · Nothing important is being stored</footer>
+
+    <section class="shop">
+      <h2>Upgrade shop</h2>
+      <p class="shop-intro">Earn 50 coins each time your total clicks pass another 500.</p>
+      <div class="upgrade">
+        <div><strong>Auto Clicker</strong><p>Automatically clicks once every second. Buy more to make it faster.</p></div>
+        <button id="autoBtn">Buy · 50 coins</button>
+      </div>
+      <div class="upgrade">
+        <div><strong>Stronger Clicks</strong><p>Every manual click gives you one extra click. Stacks forever.</p></div>
+        <button id="powerBtn">Buy · 100 coins</button>
+      </div>
+      <div class="upgrade">
+        <div><strong>Coin Bonus</strong><p>Earn 25 more coins every time you reach another 500 clicks.</p></div>
+        <button id="bonusBtn">Buy · 150 coins</button>
+      </div>
+    </section>
+    <footer>Your progress saves automatically on this device.</footer>
   </main>
   <script>
-    let clicks = 0;
-    let theme = 0;
+    const SAVE_KEY = "chatgptTestLabSaveV2";
+    const defaults = { clicks: 0, coins: 0, auto: 0, power: 1, bonus: 0, nextReward: 500, theme: 0 };
+    let game = { ...defaults };
+    try {
+      const saved = JSON.parse(localStorage.getItem(SAVE_KEY) || "null");
+      if (saved && typeof saved === "object") game = { ...defaults, ...saved };
+    } catch (_) {}
+    game.clicks = Math.max(0, Number(game.clicks) || 0);
+    game.coins = Math.max(0, Number(game.coins) || 0);
+    game.auto = Math.max(0, Number(game.auto) || 0);
+    game.power = Math.max(1, Number(game.power) || 1);
+    game.bonus = Math.max(0, Number(game.bonus) || 0);
+    game.nextReward = Math.max(500, Number(game.nextReward) || 500);
+
+    const $ = id => document.getElementById(id);
     const messages = [
       "The button has successfully been buttoned.",
       "Scientists are currently investigating this click.",
@@ -56,28 +102,87 @@
       ["#21151b", "#34212b", "#ff789d"],
       ["#171d29", "#26364a", "#55b8ed"]
     ];
-    const count = document.getElementById("count");
-    const message = document.getElementById("message");
-    document.getElementById("clickBtn").addEventListener("click", () => {
-      clicks++;
-      count.textContent = clicks;
-      message.textContent = "Click registered. The experiment continues.";
+    const autoCost = () => 50 + game.auto * 50;
+    const powerCost = () => 100 + (game.power - 1) * 100;
+    const bonusCost = () => 150 + game.bonus * 150;
+
+    function save() {
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(game)); } catch (_) {}
+    }
+    function render() {
+      $("count").textContent = game.clicks.toLocaleString();
+      $("coins").textContent = game.coins.toLocaleString();
+      $("clickPower").textContent = game.power.toLocaleString();
+      $("autoRate").textContent = game.auto.toLocaleString();
+      $("autoBtn").textContent = "Buy · " + autoCost() + " coins";
+      $("powerBtn").textContent = "Buy · " + powerCost() + " coins";
+      $("bonusBtn").textContent = "Buy · " + bonusCost() + " coins";
+      $("autoBtn").disabled = game.coins < autoCost();
+      $("powerBtn").disabled = game.coins < powerCost();
+      $("bonusBtn").disabled = game.coins < bonusCost();
+    }
+    function addClicks(amount) {
+      const oldMilestone = Math.floor(game.clicks / 500);
+      game.clicks += amount;
+      const newMilestone = Math.floor(game.clicks / 500);
+      if (newMilestone > oldMilestone) {
+        const reward = (newMilestone - oldMilestone) * (50 + game.bonus * 25);
+        game.coins += reward;
+        $("message").textContent = "Milestone reached! +" + reward + " coins. Keep going!";
+      }
+      render();
+      save();
+    }
+
+    $("clickBtn").addEventListener("click", () => {
+      addClicks(game.power);
+      if (game.clicks % 500 !== 0) $("message").textContent = "+" + game.power + " clicks!";
     });
-    document.getElementById("randomBtn").addEventListener("click", () => {
-      message.textContent = messages[Math.floor(Math.random() * messages.length)];
+    $("randomBtn").addEventListener("click", () => {
+      $("message").textContent = messages[Math.floor(Math.random() * messages.length)];
     });
-    document.getElementById("themeBtn").addEventListener("click", () => {
-      theme = (theme + 1) % themes.length;
-      document.documentElement.style.setProperty("--bg", themes[theme][0]);
-      document.documentElement.style.setProperty("--panel", themes[theme][1]);
-      document.documentElement.style.setProperty("--accent", themes[theme][2]);
-      message.textContent = "New theme loaded.";
+    $("themeBtn").addEventListener("click", () => {
+      game.theme = (game.theme + 1) % themes.length;
+      document.documentElement.style.setProperty("--bg", themes[game.theme][0]);
+      document.documentElement.style.setProperty("--panel", themes[game.theme][1]);
+      document.documentElement.style.setProperty("--accent", themes[game.theme][2]);
+      $("message").textContent = "New theme loaded.";
+      save();
     });
-    document.getElementById("resetBtn").addEventListener("click", () => {
-      clicks = 0;
-      count.textContent = clicks;
-      message.textContent = "Counter reset. Fresh experiment!";
+    $("autoBtn").addEventListener("click", () => {
+      const cost = autoCost();
+      if (game.coins < cost) return;
+      game.coins -= cost;
+      game.auto++;
+      $("message").textContent = "Auto clicker purchased! It now clicks " + game.auto + " time(s) per second.";
+      render(); save();
     });
+    $("powerBtn").addEventListener("click", () => {
+      const cost = powerCost();
+      if (game.coins < cost) return;
+      game.coins -= cost;
+      game.power++;
+      $("message").textContent = "Click power upgraded to " + game.power + " per tap!";
+      render(); save();
+    });
+    $("bonusBtn").addEventListener("click", () => {
+      const cost = bonusCost();
+      if (game.coins < cost) return;
+      game.coins -= cost;
+      game.bonus++;
+      $("message").textContent = "Coin bonus upgraded! Next milestone pays " + (50 + game.bonus * 25) + " coins.";
+      render(); save();
+    });
+
+    if (game.theme > 0) {
+      document.documentElement.style.setProperty("--bg", themes[game.theme][0]);
+      document.documentElement.style.setProperty("--panel", themes[game.theme][1]);
+      document.documentElement.style.setProperty("--accent", themes[game.theme][2]);
+    }
+    render();
+    setInterval(() => {
+      if (game.auto > 0) addClicks(game.auto);
+    }, 1000);
   </script>
 </body>
 </html>
